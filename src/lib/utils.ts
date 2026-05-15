@@ -8,7 +8,7 @@ import {
   isAfter,
   isBefore,
 } from 'date-fns';
-import type { Severity, TimeWindow, TrendPoint } from '../types';
+import type { Severity, TimeWindow, TrendPoint, ChartAnnotation } from '../types';
 
 export function severityFromScore(score: number | undefined): Severity {
   if (score === undefined) return 'UNKNOWN';
@@ -94,4 +94,36 @@ export function severityColor(severity: Severity): string {
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Returns true if the bucket [start, end] overlaps the holiday slow-down window (Dec 24 – Jan 3).
+function bucketOverlapsHoliday(start: Date, end: Date): boolean {
+  for (const year of [start.getFullYear(), end.getFullYear()]) {
+    const hStart = new Date(year, 11, 24); // Dec 24
+    const hEnd = new Date(year + 1, 0, 3); // Jan 3 next year
+    if (start <= hEnd && end >= hStart) return true;
+  }
+  return false;
+}
+
+/** Groups consecutive holiday buckets into annotation spans for the trend chart. */
+export function getHolidayAnnotations(buckets: DateBucket[]): ChartAnnotation[] {
+  const annotations: ChartAnnotation[] = [];
+  let x1: string | null = null;
+  let x2: string | null = null;
+
+  for (const bucket of buckets) {
+    if (bucketOverlapsHoliday(bucket.start, bucket.end)) {
+      if (!x1) x1 = bucket.label;
+      x2 = bucket.label;
+    } else if (x1 && x2) {
+      annotations.push({ x1, x2, description: 'Holiday period (Dec 24 – Jan 3): NVD and CISA publish fewer advisories during this window.' });
+      x1 = null;
+      x2 = null;
+    }
+  }
+  if (x1 && x2) {
+    annotations.push({ x1, x2, description: 'Holiday period (Dec 24 – Jan 3): NVD and CISA publish fewer advisories during this window.' });
+  }
+  return annotations;
 }

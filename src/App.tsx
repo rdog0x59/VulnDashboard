@@ -8,8 +8,8 @@ import { VulnTable } from './components/VulnTable';
 import { OsvSearch } from './components/OsvSearch';
 import { TimeWindowSelector } from './components/TimeWindowSelector';
 import { useKEV } from './hooks/useKEV';
-import { useNVDTrend, useNVDCatalog } from './hooks/useNVD';
-import { generateBuckets, mergeTrendPoints } from './lib/utils';
+import { useNVDCatalog } from './hooks/useNVD';
+import { generateBuckets, mergeTrendPoints, bucketVulns, getHolidayAnnotations } from './lib/utils';
 import { getThreatActors } from './lib/threatActors';
 import type { TimeWindow } from './types';
 
@@ -20,24 +20,26 @@ export default function App() {
   const queryClient = useQueryClient();
 
   const kevQuery = useKEV(timeWindow);
-  const nvdTrendQuery = useNVDTrend(timeWindow);
   const nvdCatalogQuery = useNVDCatalog(timeWindow);
 
-  const isRefreshing =
-    kevQuery.isFetching || nvdTrendQuery.isFetching || nvdCatalogQuery.isFetching;
+  const isRefreshing = kevQuery.isFetching || nvdCatalogQuery.isFetching;
 
   function handleRefresh() {
     queryClient.invalidateQueries();
     setLastUpdated(new Date());
   }
 
-  const trendData = useMemo(() => {
+  const { trendData, holidayAnnotations } = useMemo(() => {
     const buckets = generateBuckets(timeWindow);
     const kevCounts = kevQuery.data?.counts ?? Array(buckets.length).fill(0);
-    const nvdCounts = nvdTrendQuery.data ?? Array(buckets.length).fill(0);
+    const nvdDates = (nvdCatalogQuery.data ?? []).map(v => new Date(v.publishedDate));
+    const nvdCounts = bucketVulns(nvdDates, buckets);
     const osvCounts = Array(buckets.length).fill(0);
-    return mergeTrendPoints(buckets, kevCounts, nvdCounts, osvCounts);
-  }, [timeWindow, kevQuery.data, nvdTrendQuery.data]);
+    return {
+      trendData: mergeTrendPoints(buckets, kevCounts, nvdCounts, osvCounts),
+      holidayAnnotations: getHolidayAnnotations(buckets),
+    };
+  }, [timeWindow, kevQuery.data, nvdCatalogQuery.data]);
 
   const allVulns = useMemo(() => {
     const nvd = nvdCatalogQuery.data ?? [];
@@ -89,10 +91,11 @@ export default function App() {
         <TrendChart
           data={trendData}
           isLoadingKEV={kevQuery.isLoading || kevQuery.isFetching}
-          isLoadingNVD={nvdTrendQuery.isLoading || nvdTrendQuery.isFetching}
+          isLoadingNVD={nvdCatalogQuery.isLoading || nvdCatalogQuery.isFetching}
           hasOSV={false}
+          annotations={holidayAnnotations}
           errorKEV={kevQuery.error ? String(kevQuery.error) : undefined}
-          errorNVD={nvdTrendQuery.error ? String(nvdTrendQuery.error) : undefined}
+          errorNVD={nvdCatalogQuery.error ? String(nvdCatalogQuery.error) : undefined}
         />
 
         <VendorChart
