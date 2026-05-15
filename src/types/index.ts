@@ -30,6 +30,12 @@ export interface TrendPoint {
   osv: number;
 }
 
+export interface ChartAnnotation {
+  x1: string;
+  x2: string;
+  description: string;
+}
+
 export interface SourceStats {
   total: number;
   critical: number;

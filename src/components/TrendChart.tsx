@@ -8,9 +8,10 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  ReferenceArea,
 } from 'recharts';
 import { Loader2 } from 'lucide-react';
-import type { TrendPoint } from '../types';
+import type { TrendPoint, ChartAnnotation } from '../types';
 
 const SOURCES = [
   { key: 'kev' as const, label: 'CISA KEV', color: '#f59e0b', fill: '#f59e0b' },
@@ -23,15 +24,19 @@ interface Props {
   isLoadingKEV: boolean;
   isLoadingNVD: boolean;
   hasOSV: boolean;
+  annotations?: ChartAnnotation[];
   errorKEV?: string;
   errorNVD?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CustomTooltip({ active, payload, label }: any) {
+function CustomTooltip({ active, payload, label, annotations }: any) {
   if (!active || !payload?.length) return null;
+  const holidayNote = (annotations as ChartAnnotation[] | undefined)?.find(
+    a => a.x1 === label || a.x2 === label
+  );
   return (
-    <div className="bg-navy-800 border border-navy-600 rounded-lg p-3 shadow-xl text-xs">
+    <div className="bg-navy-800 border border-navy-600 rounded-lg p-3 shadow-xl text-xs max-w-[260px]">
       <p className="text-slate-300 font-medium mb-2">{label}</p>
       {payload.map(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,11 +51,16 @@ function CustomTooltip({ active, payload, label }: any) {
           </div>
         )
       )}
+      {holidayNote && (
+        <p className="mt-2 pt-2 border-t border-navy-600 text-amber-400 leading-snug">
+          {holidayNote.description}
+        </p>
+      )}
     </div>
   );
 }
 
-export function TrendChart({ data, isLoadingKEV, isLoadingNVD, hasOSV, errorKEV, errorNVD }: Props) {
+export function TrendChart({ data, isLoadingKEV, isLoadingNVD, hasOSV, annotations = [], errorKEV, errorNVD }: Props) {
   const [hidden, setHidden] = useState<Set<string>>(new Set(['osv']));
 
   const visibleSources = SOURCES.filter((s) => {
@@ -144,10 +154,22 @@ export function TrendChart({ data, isLoadingKEV, isLoadingNVD, hasOSV, errorKEV,
                 width={45}
                 tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip annotations={annotations} />} />
               <Legend
                 wrapperStyle={{ display: 'none' }}
               />
+              {annotations.map((a, i) => (
+                <ReferenceArea
+                  key={i}
+                  x1={a.x1}
+                  x2={a.x2}
+                  fill="#f59e0b"
+                  fillOpacity={0.15}
+                  stroke="#f59e0b"
+                  strokeOpacity={0.45}
+                  label={{ value: 'Holiday ↓', position: 'insideTop', fill: '#f59e0b', fontSize: 10 }}
+                />
+              ))}
               {visibleSources.map((s) =>
                 hidden.has(s.key) ? null : (
                   <Area
