@@ -9,7 +9,6 @@ import {
   ResponsiveContainer,
   Legend,
   ReferenceArea,
-  Label,
 } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import type { TrendPoint, ChartAnnotation } from '../types';
@@ -165,18 +164,11 @@ export function TrendChart({ data, isLoadingKEV, isLoadingNVD, hasOSV, annotatio
                   x1={a.x1}
                   x2={a.x2}
                   fill="#f59e0b"
-                  fillOpacity={0.07}
+                  fillOpacity={0.15}
                   stroke="#f59e0b"
-                  strokeOpacity={0.2}
-                  strokeDasharray="4 3"
-                >
-                  <Label
-                    value="Holiday Slowdown"
-                    position="insideTop"
-                    offset={6}
-                    style={{ fill: '#f59e0b', fontSize: 10, opacity: 0.7 }}
-                  />
-                </ReferenceArea>
+                  strokeOpacity={0.45}
+                  label={{ value: 'Holiday ↓', position: 'insideTop', fill: '#f59e0b', fontSize: 10 }}
+                />
               ))}
               {visibleSources.map((s) =>
                 hidden.has(s.key) ? null : (
