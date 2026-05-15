@@ -1,8 +1,9 @@
 import {
   subMonths,
-  startOfMonth,
-  endOfMonth,
-  addMonths,
+  startOfWeek,
+  endOfWeek,
+  addWeeks,
+  addDays,
   format,
   isAfter,
   isBefore,
@@ -32,15 +33,28 @@ export interface DateBucket {
 export function generateBuckets(window: TimeWindow): DateBucket[] {
   const now = new Date();
   const buckets: DateBucket[] = [];
-  // All windows use monthly buckets
-  const months = window === '3M' ? 3 : window === '6M' ? 6 : 12;
-  let cursor = startOfMonth(subMonths(now, months));
-  while (isBefore(cursor, now)) {
-    const start = cursor;
-    const end = endOfMonth(cursor);
-    buckets.push({ label: format(start, 'MMM yy'), start, end });
-    cursor = addMonths(cursor, 1);
+
+  if (window === '12M') {
+    // Bi-weekly buckets for 12M (~26 buckets, manageable API call count)
+    let cursor = startOfWeek(subMonths(now, 12), { weekStartsOn: 1 });
+    while (isBefore(cursor, now)) {
+      const start = cursor;
+      const end = addDays(cursor, 13); // 14-day span
+      buckets.push({ label: format(start, 'MMM d'), start, end });
+      cursor = addDays(cursor, 14);
+    }
+  } else {
+    // Weekly buckets for 3M (~13 buckets) and 6M (~26 buckets)
+    const months = window === '3M' ? 3 : 6;
+    let cursor = startOfWeek(subMonths(now, months), { weekStartsOn: 1 });
+    while (isBefore(cursor, now)) {
+      const start = cursor;
+      const end = endOfWeek(cursor, { weekStartsOn: 1 });
+      buckets.push({ label: format(start, 'MMM d'), start, end });
+      cursor = addWeeks(cursor, 1);
+    }
   }
+
   return buckets;
 }
 

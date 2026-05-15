@@ -81,8 +81,8 @@ export function VendorChart({ vulns, isLoading, selectedVendor, onVendorSelect }
     [vulns]
   );
 
-  // Bars render bottom→top in recharts vertical layout; reverse so highest is at top
-  const chartData = [...rows].reverse();
+  // recharts vertical layout renders data[0] at the top, so highest-count first = largest at top
+  const chartData = rows;
 
   const barHeight = 28;
   const chartHeight = Math.max(180, chartData.length * barHeight + 40);
