@@ -26,11 +26,11 @@ export async function fetchKEV(): Promise<Vulnerability[]> {
   const cached = cacheGet<Vulnerability[]>(CACHE_KEY);
   if (cached) return cached;
 
-  // Use the Vite dev proxy in dev; fall back to direct URL in prod
-  const isDev = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV ?? false;
-  const url = isDev
+  // In production the KEV catalog is fetched at build time and bundled as a static file.
+  // In dev the Vite proxy handles the cross-origin request.
+  const url = import.meta.env.DEV
     ? '/cisa-kev'
-    : 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+    : `${import.meta.env.BASE_URL}kev.json`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`KEV fetch failed: ${res.status}`);
