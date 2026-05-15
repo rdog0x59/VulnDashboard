@@ -1,2 +1,1 @@
-npm install
-npm run dev
+Vulnerability Dashboard proof of concept
