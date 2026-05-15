@@ -113,25 +113,51 @@ export async function fetchNVDTrendCounts(window: TimeWindow): Promise<number[]>
   return counts;
 }
 
-/** Fetch all NVD entries in the selected window for the catalog (max 500). */
+// NVD API rejects date ranges > 120 days — split into safe 90-day chunks.
+const NVD_CHUNK_DAYS = 90;
+
+function dateChunks(start: Date, end: Date): { start: Date; end: Date }[] {
+  const chunks: { start: Date; end: Date }[] = [];
+  let cursor = new Date(start);
+  while (cursor < end) {
+    const chunkEnd = new Date(cursor);
+    chunkEnd.setDate(chunkEnd.getDate() + NVD_CHUNK_DAYS);
+    chunks.push({ start: new Date(cursor), end: chunkEnd > end ? new Date(end) : chunkEnd });
+    cursor = new Date(chunkEnd);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return chunks;
+}
+
+/** Fetch NVD entries for the catalog, chunking date range to respect the 120-day API limit. */
 export async function fetchNVDForWindow(window: TimeWindow): Promise<Vulnerability[]> {
   const cacheKey = `nvd-window-${window}`;
   const cached = cacheGet<Vulnerability[]>(cacheKey);
   if (cached) return cached;
 
   const now = new Date();
-  const start = windowStartDate(window);
+  const chunks = dateChunks(windowStartDate(window), now);
+  const seen = new Set<string>();
+  const all: Vulnerability[] = [];
 
-  // noRejected excludes withdrawn entries; results are sorted by published date desc
-  const url =
-    `${NVD_BASE}?pubStartDate=${formatNVDDate(start)}&pubEndDate=${formatNVDDate(now)}` +
-    `&resultsPerPage=2000&noRejected`;
+  for (let i = 0; i < chunks.length; i++) {
+    if (i > 0) await sleep(700); // respect 5 req/30s rate limit
+    const { start, end } = chunks[i];
+    const url =
+      `${NVD_BASE}?pubStartDate=${formatNVDDate(start)}&pubEndDate=${formatNVDDate(end)}` +
+      `&resultsPerPage=2000&noRejected`;
+    try {
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!res.ok) throw new Error(`NVD ${res.status}`);
+      const data: NVDResponse = await res.json();
+      for (const { cve } of data.vulnerabilities) {
+        if (!seen.has(cve.id)) { seen.add(cve.id); all.push(normalizeNVDEntry(cve)); }
+      }
+    } catch {
+      // continue with partial data from other chunks
+    }
+  }
 
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`NVD fetch failed: ${res.status}`);
-  const data: NVDResponse = await res.json();
-  const vulns = data.vulnerabilities.map((v) => normalizeNVDEntry(v.cve));
-
-  cacheSet(cacheKey, vulns, COUNTS_TTL);
-  return vulns;
+  cacheSet(cacheKey, all, COUNTS_TTL);
+  return all;
 }
