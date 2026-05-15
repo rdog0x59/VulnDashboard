@@ -14,6 +14,11 @@ interface NVDMetric {
   cvssData: { baseScore: number; baseSeverity: string };
 }
 
+interface NVDCpeMatch {
+  criteria: string;
+  vulnerable: boolean;
+}
+
 interface NVDCve {
   id: string;
   published: string;
@@ -24,7 +29,51 @@ interface NVDCve {
     cvssMetricV30?: NVDMetric[];
     cvssMetricV2?: NVDMetric[];
   };
+  configurations?: { nodes: { cpeMatch?: NVDCpeMatch[] }[] }[];
   references?: { url: string }[];
+}
+
+// Well-known CPE vendor → display name overrides
+const VENDOR_DISPLAY: Record<string, string> = {
+  microsoft: 'Microsoft', apple: 'Apple', google: 'Google',
+  cisco: 'Cisco', oracle: 'Oracle', adobe: 'Adobe',
+  apache: 'Apache', linux: 'Linux', redhat: 'Red Hat',
+  canonical: 'Canonical', debian: 'Debian', fedoraproject: 'Fedora',
+  fortinet: 'Fortinet', palo_alto_networks: 'Palo Alto Networks',
+  ivanti: 'Ivanti', citrix: 'Citrix', vmware: 'VMware',
+  juniper: 'Juniper', f5: 'F5', sonicwall: 'SonicWall',
+  atlassian: 'Atlassian', mozilla: 'Mozilla', openssh: 'OpenSSH',
+  openssl: 'OpenSSL', wordpress: 'WordPress', php: 'PHP',
+  nodejs: 'Node.js', nginx: 'Nginx', isc: 'ISC',
+  solarwinds: 'SolarWinds', progress: 'Progress', zoho: 'Zoho',
+  pulsesecure: 'Pulse Secure', barracuda: 'Barracuda',
+  papercut: 'PaperCut', mitel: 'Mitel', veeam: 'Veeam',
+  confluence: 'Atlassian', exchange: 'Microsoft',
+};
+
+function cpeToDisplayName(vendor: string): string {
+  const key = vendor.toLowerCase();
+  return VENDOR_DISPLAY[key] ?? vendor.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function extractVendorFromCpe(cve: NVDCve): { vendor?: string; product?: string } {
+  for (const config of cve.configurations ?? []) {
+    for (const node of config.nodes) {
+      const match = node.cpeMatch?.find(m => m.vulnerable);
+      if (!match) continue;
+      // cpe:2.3:type:vendor:product:version:...
+      const parts = match.criteria.split(':');
+      if (parts.length >= 5 && parts[3] !== '*' && parts[3] !== '-') {
+        return {
+          vendor: cpeToDisplayName(parts[3]),
+          product: parts[4] !== '*' && parts[4] !== '-'
+            ? parts[4].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+            : undefined,
+        };
+      }
+    }
+  }
+  return {};
 }
 
 interface NVDResponse {
@@ -48,6 +97,7 @@ function normalizeNVDEntry(cve: NVDCve): Vulnerability {
   const metric = extractMetric(cve);
   const score = metric?.cvssData.baseScore;
   const desc = cve.descriptions.find((d) => d.lang === 'en')?.value ?? '';
+  const { vendor, product } = extractVendorFromCpe(cve);
   return {
     id: cve.id,
     source: 'NVD',
@@ -57,6 +107,8 @@ function normalizeNVDEntry(cve: NVDCve): Vulnerability {
     cvssScore: score,
     publishedDate: new Date(cve.published),
     lastModifiedDate: new Date(cve.lastModified),
+    vendor,
+    product,
     url: `https://nvd.nist.gov/vuln/detail/${cve.id}`,
   };
 }

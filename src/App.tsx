@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Header } from './components/Header';
 import { StatCards } from './components/StatCards';
 import { TrendChart } from './components/TrendChart';
+import { VendorChart } from './components/VendorChart';
 import { VulnTable } from './components/VulnTable';
 import { OsvSearch } from './components/OsvSearch';
 import { TimeWindowSelector } from './components/TimeWindowSelector';
@@ -14,6 +15,7 @@ import type { TimeWindow } from './types';
 
 export default function App() {
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('6M');
+  const [vendorFilter, setVendorFilter] = useState('ALL');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(new Date());
   const queryClient = useQueryClient();
 
@@ -39,7 +41,6 @@ export default function App() {
 
   const allVulns = useMemo(() => {
     const nvd = nvdCatalogQuery.data ?? [];
-    // Build a CVSS lookup from NVD so KEV entries (which have no CVSS) can be enriched
     const nvdScores = new Map(nvd.map((v) => [v.id, { severity: v.severity, cvssScore: v.cvssScore }]));
     const kevIds = new Set<string>();
 
@@ -48,13 +49,11 @@ export default function App() {
       const nvdData = nvdScores.get(v.id);
       return {
         ...v,
-        // Prefer NVD severity/score over UNKNOWN when available
         ...(nvdData?.severity && nvdData.severity !== 'UNKNOWN' ? nvdData : {}),
         threatActors: getThreatActors(v.id),
       };
     });
 
-    // NVD entries not already covered by KEV (avoid duplicates)
     const nvdOnly = nvd
       .filter((v) => !kevIds.has(v.id))
       .map((v) => ({ ...v, threatActors: getThreatActors(v.id) }));
@@ -82,7 +81,7 @@ export default function App() {
               Showing data from CISA KEV &amp; NVD for the selected window
             </p>
           </div>
-          <TimeWindowSelector value={timeWindow} onChange={setTimeWindow} />
+          <TimeWindowSelector value={timeWindow} onChange={(w) => { setTimeWindow(w); setVendorFilter('ALL'); }} />
         </div>
 
         <StatCards vulns={allVulns} isLoading={isLoadingCatalog} />
@@ -96,16 +95,20 @@ export default function App() {
           errorNVD={nvdTrendQuery.error ? String(nvdTrendQuery.error) : undefined}
         />
 
+        <VendorChart
+          vulns={allVulns}
+          isLoading={isLoadingCatalog}
+          selectedVendor={vendorFilter}
+          onVendorSelect={setVendorFilter}
+        />
+
         <div className="flex flex-wrap gap-3">
           {[
-            { label: 'CISA KEV', desc: 'Known Exploited Vulnerabilities catalog — actively weaponised CVEs', color: '#f59e0b' },
-            { label: 'NVD', desc: 'NIST National Vulnerability Database — all published CVEs with CVSS scores', color: '#3b82f6' },
-            { label: 'OSV', desc: 'Open Source Vulnerabilities — search below by package name', color: '#10b981' },
+            { label: 'CISA KEV', desc: 'Known Exploited Vulnerabilities — actively weaponised CVEs', color: '#f59e0b' },
+            { label: 'NVD', desc: 'NIST National Vulnerability Database — all CVEs with CVSS scores', color: '#3b82f6' },
+            { label: 'OSV', desc: 'Open Source Vulnerabilities — search below by package', color: '#10b981' },
           ].map((s) => (
-            <div
-              key={s.label}
-              className="flex items-start gap-2 px-3 py-2 rounded-lg bg-navy-900 border border-navy-700 max-w-xs"
-            >
+            <div key={s.label} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-navy-900 border border-navy-700 max-w-xs">
               <span className="w-2.5 h-2.5 rounded-full mt-0.5 flex-shrink-0" style={{ backgroundColor: s.color }} />
               <div>
                 <span className="text-xs font-medium text-slate-200">{s.label}</span>
@@ -117,7 +120,12 @@ export default function App() {
 
         <div>
           <h2 className="text-lg font-semibold text-white mb-3">Vulnerability Catalog</h2>
-          <VulnTable vulns={allVulns} isLoading={isLoadingCatalog} />
+          <VulnTable
+            vulns={allVulns}
+            isLoading={isLoadingCatalog}
+            vendorFilter={vendorFilter}
+            onVendorFilterChange={setVendorFilter}
+          />
         </div>
 
         <OsvSearch />

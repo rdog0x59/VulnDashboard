@@ -17,15 +17,24 @@ const SEVERITY_ORDER: Record<Severity, number> = {
 interface Props {
   vulns: Vulnerability[];
   isLoading: boolean;
+  vendorFilter?: string;
+  onVendorFilterChange?: (v: string) => void;
 }
 
-export function VulnTable({ vulns, isLoading }: Props) {
+export function VulnTable({ vulns, isLoading, vendorFilter: externalVendor, onVendorFilterChange }: Props) {
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<Source | 'ALL'>('ALL');
   const [severityFilter, setSeverityFilter] = useState<Severity | 'ALL'>('ALL');
-  const [vendorFilter, setVendorFilter] = useState('ALL');
+  const [internalVendor, setInternalVendor] = useState('ALL');
   const [vendorSearch, setVendorSearch] = useState('');
   const [vendorOpen, setVendorOpen] = useState(false);
+
+  // Controlled from outside (chart click) takes precedence
+  const vendorFilter = externalVendor ?? internalVendor;
+  function setVendorFilter(v: string) {
+    setInternalVendor(v);
+    onVendorFilterChange?.(v);
+  }
   const [sortKey, setSortKey] = useState<SortKey>('publishedDate');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(0);
