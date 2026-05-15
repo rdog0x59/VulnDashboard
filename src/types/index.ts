@@ -18,6 +18,7 @@ export interface Vulnerability {
   url?: string;
   ecosystem?: string;
   ransomwareUse?: boolean;
+  threatActors?: import('../lib/threatActors').ThreatActor[];
 }
 
 export interface TrendPoint {

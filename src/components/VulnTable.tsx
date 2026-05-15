@@ -5,6 +5,7 @@ import type { Vulnerability, Source, Severity } from '../types';
 import { SourceBadge } from './SourceBadge';
 import { SeverityBadge } from './SeverityBadge';
 import { VulnDetail } from './VulnDetail';
+import { actorBadgeStyle, actorFlag } from '../lib/threatActors';
 
 type SortKey = 'publishedDate' | 'severity' | 'source' | 'id';
 type SortDir = 'asc' | 'desc';
@@ -253,19 +254,36 @@ export function VulnTable({ vulns, isLoading }: Props) {
                     onClick={() => setSelected(v)}
                     className="border-b border-navy-800 hover:bg-navy-800/60 cursor-pointer transition-colors group"
                   >
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         {v.ransomwareUse && (
                           <span title="Used in ransomware campaigns">
                             <Flame className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
                           </span>
                         )}
-                        <span className="font-mono text-xs text-slate-200">{v.id}</span>
+                        <span className="font-mono text-xs text-slate-200 whitespace-nowrap">{v.id}</span>
                       </div>
                       {v.vendor && v.product && (
-                        <span className="text-xs text-slate-600 mt-0.5 block">
+                        <span className="text-xs text-slate-600 mt-0.5 block whitespace-nowrap">
                           {v.vendor} · {v.product}
                         </span>
+                      )}
+                      {v.threatActors && v.threatActors.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {v.threatActors.slice(0, 2).map((a) => (
+                            <span
+                              key={a.name}
+                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium border ${actorBadgeStyle(a.category)}`}
+                            >
+                              {actorFlag(a)} {a.name}
+                            </span>
+                          ))}
+                          {v.threatActors.length > 2 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-600 bg-slate-500/10 text-slate-500">
+                              +{v.threatActors.length - 2}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">

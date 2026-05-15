@@ -9,6 +9,7 @@ import { TimeWindowSelector } from './components/TimeWindowSelector';
 import { useKEV } from './hooks/useKEV';
 import { useNVDTrend, useNVDCatalog } from './hooks/useNVD';
 import { generateBuckets, mergeTrendPoints } from './lib/utils';
+import { getThreatActors } from './lib/threatActors';
 import type { TimeWindow } from './types';
 
 export default function App() {
@@ -37,9 +38,28 @@ export default function App() {
   }, [timeWindow, kevQuery.data, nvdTrendQuery.data]);
 
   const allVulns = useMemo(() => {
-    const kev = kevQuery.data?.filtered ?? [];
     const nvd = nvdCatalogQuery.data ?? [];
-    return [...kev, ...nvd].sort(
+    // Build a CVSS lookup from NVD so KEV entries (which have no CVSS) can be enriched
+    const nvdScores = new Map(nvd.map((v) => [v.id, { severity: v.severity, cvssScore: v.cvssScore }]));
+    const kevIds = new Set<string>();
+
+    const kev = (kevQuery.data?.filtered ?? []).map((v) => {
+      kevIds.add(v.id);
+      const nvdData = nvdScores.get(v.id);
+      return {
+        ...v,
+        // Prefer NVD severity/score over UNKNOWN when available
+        ...(nvdData?.severity && nvdData.severity !== 'UNKNOWN' ? nvdData : {}),
+        threatActors: getThreatActors(v.id),
+      };
+    });
+
+    // NVD entries not already covered by KEV (avoid duplicates)
+    const nvdOnly = nvd
+      .filter((v) => !kevIds.has(v.id))
+      .map((v) => ({ ...v, threatActors: getThreatActors(v.id) }));
+
+    return [...kev, ...nvdOnly].sort(
       (a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime()
     );
   }, [kevQuery.data, nvdCatalogQuery.data]);

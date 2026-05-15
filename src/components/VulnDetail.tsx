@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
-import { X, ExternalLink, Flame, ShieldAlert, Calendar, AlertTriangle, Package, Building2, Info } from 'lucide-react';
+import { X, ExternalLink, Flame, ShieldAlert, Calendar, AlertTriangle, Package, Building2, Info, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Vulnerability } from '../types';
 import { SourceBadge } from './SourceBadge';
 import { SeverityBadge } from './SeverityBadge';
 import { severityColor } from '../lib/utils';
+import { actorBadgeStyle, actorFlag } from '../lib/threatActors';
 
 interface Props {
   vuln: Vulnerability | null;
@@ -165,6 +166,33 @@ export function VulnDetail({ vuln, onClose }: Props) {
                   <MetaRow icon={Package} label="Ecosystem" value={vuln.ecosystem} />
                 )}
               </div>
+
+              {/* Threat actors */}
+              {vuln.threatActors && vuln.threatActors.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users className="w-4 h-4 text-slate-500" />
+                    <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Known Threat Actors
+                    </h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {vuln.threatActors.map((a) => (
+                      <span
+                        key={a.name}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${actorBadgeStyle(a.category)}`}
+                      >
+                        <span>{actorFlag(a)}</span>
+                        <span>{a.name}</span>
+                        <span className="opacity-50 capitalize text-[10px]">{a.category}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-600 mt-2">
+                    Attribution sourced from public CISA advisories and vendor threat reports.
+                  </p>
+                </div>
+              )}
 
               {/* Required action (KEV) */}
               {vuln.requiredAction && (
