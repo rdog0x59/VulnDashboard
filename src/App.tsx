@@ -12,13 +12,13 @@ import { generateBuckets, mergeTrendPoints } from './lib/utils';
 import type { TimeWindow } from './types';
 
 export default function App() {
-  const [window, setWindow] = useState<TimeWindow>('3M');
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>('3M');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(new Date());
   const queryClient = useQueryClient();
 
-  const kevQuery = useKEV(window);
-  const nvdTrendQuery = useNVDTrend(window);
-  const nvdCatalogQuery = useNVDCatalog(window);
+  const kevQuery = useKEV(timeWindow);
+  const nvdTrendQuery = useNVDTrend(timeWindow);
+  const nvdCatalogQuery = useNVDCatalog(timeWindow);
 
   const isRefreshing =
     kevQuery.isFetching || nvdTrendQuery.isFetching || nvdCatalogQuery.isFetching;
@@ -28,26 +28,23 @@ export default function App() {
     setLastUpdated(new Date());
   }
 
-  // Build trend chart data
   const trendData = useMemo(() => {
-    const buckets = generateBuckets(window);
+    const buckets = generateBuckets(timeWindow);
     const kevCounts = kevQuery.data?.counts ?? Array(buckets.length).fill(0);
     const nvdCounts = nvdTrendQuery.data ?? Array(buckets.length).fill(0);
     const osvCounts = Array(buckets.length).fill(0);
     return mergeTrendPoints(buckets, kevCounts, nvdCounts, osvCounts);
-  }, [window, kevQuery.data, nvdTrendQuery.data]);
+  }, [timeWindow, kevQuery.data, nvdTrendQuery.data]);
 
-  // Combine KEV + NVD entries for the catalog
   const allVulns = useMemo(() => {
     const kev = kevQuery.data?.filtered ?? [];
     const nvd = nvdCatalogQuery.data ?? [];
     return [...kev, ...nvd].sort(
-      (a, b) => b.publishedDate.getTime() - a.publishedDate.getTime()
+      (a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime()
     );
   }, [kevQuery.data, nvdCatalogQuery.data]);
 
-  const isLoadingCatalog =
-    kevQuery.isLoading || nvdCatalogQuery.isLoading;
+  const isLoadingCatalog = kevQuery.isLoading || nvdCatalogQuery.isLoading;
 
   return (
     <div className="min-h-screen bg-navy-950 text-slate-100">
@@ -58,7 +55,6 @@ export default function App() {
       />
 
       <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Time window + stats */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-white">Overview</h2>
@@ -66,12 +62,11 @@ export default function App() {
               Showing data from CISA KEV &amp; NVD for the selected window
             </p>
           </div>
-          <TimeWindowSelector value={window} onChange={(w) => { setWindow(w); }} />
+          <TimeWindowSelector value={timeWindow} onChange={setTimeWindow} />
         </div>
 
         <StatCards vulns={allVulns} isLoading={isLoadingCatalog} />
 
-        {/* Trend chart */}
         <TrendChart
           data={trendData}
           isLoadingKEV={kevQuery.isLoading || kevQuery.isFetching}
@@ -81,7 +76,6 @@ export default function App() {
           errorNVD={nvdTrendQuery.error ? String(nvdTrendQuery.error) : undefined}
         />
 
-        {/* Source legend */}
         <div className="flex flex-wrap gap-3">
           {[
             { label: 'CISA KEV', desc: 'Known Exploited Vulnerabilities catalog — actively weaponised CVEs', color: '#f59e0b' },
@@ -101,13 +95,11 @@ export default function App() {
           ))}
         </div>
 
-        {/* Vulnerability catalog */}
         <div>
           <h2 className="text-lg font-semibold text-white mb-3">Vulnerability Catalog</h2>
           <VulnTable vulns={allVulns} isLoading={isLoadingCatalog} />
         </div>
 
-        {/* OSV package search */}
         <OsvSearch />
       </main>
 
