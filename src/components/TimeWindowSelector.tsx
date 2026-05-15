@@ -1,9 +1,9 @@
 import type { TimeWindow } from '../types';
 
 const OPTIONS: { value: TimeWindow; label: string }[] = [
-  { value: '1M', label: '1 Month' },
   { value: '3M', label: '3 Months' },
   { value: '6M', label: '6 Months' },
+  { value: '12M', label: '12 Months' },
 ];
 
 interface Props {

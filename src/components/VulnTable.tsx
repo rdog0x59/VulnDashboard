@@ -7,7 +7,7 @@ import { SeverityBadge } from './SeverityBadge';
 import { VulnDetail } from './VulnDetail';
 import { actorBadgeStyle, actorFlag } from '../lib/threatActors';
 
-type SortKey = 'publishedDate' | 'severity' | 'source' | 'id';
+type SortKey = 'publishedDate' | 'lastModifiedDate' | 'severity' | 'source' | 'id';
 type SortDir = 'asc' | 'desc';
 
 const SEVERITY_ORDER: Record<Severity, number> = {
@@ -60,6 +60,9 @@ export function VulnTable({ vulns, isLoading }: Props) {
         let cmp = 0;
         if (sortKey === 'publishedDate') {
           cmp = new Date(a.publishedDate).getTime() - new Date(b.publishedDate).getTime();
+        } else if (sortKey === 'lastModifiedDate') {
+          cmp = new Date(a.lastModifiedDate ?? a.publishedDate).getTime() -
+                new Date(b.lastModifiedDate ?? b.publishedDate).getTime();
         } else if (sortKey === 'severity') {
           cmp = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
         } else if (sortKey === 'source') {
@@ -219,6 +222,7 @@ export function VulnTable({ vulns, isLoading }: Props) {
                   ['source', 'Source'],
                   ['severity', 'Severity'],
                   ['publishedDate', 'Published'],
+                  ['lastModifiedDate', 'Updated'],
                 ] as [SortKey, string][]).map(([k, label]) => (
                   <th key={k} onClick={() => handleSort(k)}
                     className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors select-none"
@@ -234,7 +238,7 @@ export function VulnTable({ vulns, isLoading }: Props) {
               {isLoading && paginated.length === 0 ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b border-navy-800">
-                    {Array.from({ length: 6 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-navy-700 rounded animate-pulse" style={{ width: `${60 + (j * 13) % 40}%` }} />
                       </td>
@@ -243,7 +247,7 @@ export function VulnTable({ vulns, isLoading }: Props) {
                 ))
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
                     No vulnerabilities match your filters.
                   </td>
                 </tr>
@@ -296,6 +300,15 @@ export function VulnTable({ vulns, isLoading }: Props) {
                       <span className="text-xs text-slate-400 font-mono">
                         {format(new Date(v.publishedDate), 'yyyy-MM-dd')}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {v.lastModifiedDate ? (
+                        <span className="text-xs text-slate-500 font-mono">
+                          {format(new Date(v.lastModifiedDate), 'yyyy-MM-dd')}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-700">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 max-w-sm">
                       <p className="text-xs text-slate-400 line-clamp-2">{v.description || v.title}</p>

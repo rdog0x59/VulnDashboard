@@ -151,6 +151,17 @@ export function VulnDetail({ vuln, onClose }: Props) {
                     </span>
                   }
                 />
+                {vuln.lastModifiedDate && (
+                  <MetaRow
+                    icon={Calendar}
+                    label="Last Updated"
+                    value={
+                      <span className="font-mono text-slate-400">
+                        {format(new Date(vuln.lastModifiedDate), 'PPP')}
+                      </span>
+                    }
+                  />
+                )}
                 {vuln.dueDate && (
                   <MetaRow
                     icon={AlertTriangle}

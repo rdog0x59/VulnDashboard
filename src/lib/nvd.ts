@@ -17,6 +17,7 @@ interface NVDMetric {
 interface NVDCve {
   id: string;
   published: string;
+  lastModified: string;
   descriptions: { lang: string; value: string }[];
   metrics?: {
     cvssMetricV31?: NVDMetric[];
@@ -55,6 +56,7 @@ function normalizeNVDEntry(cve: NVDCve): Vulnerability {
     severity: severityFromScore(score),
     cvssScore: score,
     publishedDate: new Date(cve.published),
+    lastModifiedDate: new Date(cve.lastModified),
     url: `https://nvd.nist.gov/vuln/detail/${cve.id}`,
   };
 }
@@ -120,9 +122,10 @@ export async function fetchNVDForWindow(window: TimeWindow): Promise<Vulnerabili
   const now = new Date();
   const start = windowStartDate(window);
 
+  // noRejected excludes withdrawn entries; results are sorted by published date desc
   const url =
     `${NVD_BASE}?pubStartDate=${formatNVDDate(start)}&pubEndDate=${formatNVDDate(now)}` +
-    `&resultsPerPage=500`;
+    `&resultsPerPage=2000&noRejected`;
 
   const res = await fetch(url, { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`NVD fetch failed: ${res.status}`);

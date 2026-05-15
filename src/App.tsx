@@ -13,7 +13,7 @@ import { getThreatActors } from './lib/threatActors';
 import type { TimeWindow } from './types';
 
 export default function App() {
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>('3M');
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>('6M');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(new Date());
   const queryClient = useQueryClient();
 

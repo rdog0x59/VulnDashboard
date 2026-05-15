@@ -1,6 +1,6 @@
 export type Source = 'KEV' | 'NVD' | 'OSV';
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
-export type TimeWindow = '1M' | '3M' | '6M';
+export type TimeWindow = '3M' | '6M' | '12M';
 
 export interface Vulnerability {
   id: string;
@@ -10,6 +10,7 @@ export interface Vulnerability {
   severity: Severity;
   cvssScore?: number;
   publishedDate: Date;
+  lastModifiedDate?: Date;
   product?: string;
   vendor?: string;
   isExploited?: boolean;

@@ -2,9 +2,6 @@ import {
   subMonths,
   startOfMonth,
   endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  addWeeks,
   addMonths,
   format,
   isAfter,
@@ -22,7 +19,7 @@ export function severityFromScore(score: number | undefined): Severity {
 
 export function windowStartDate(window: TimeWindow): Date {
   const now = new Date();
-  const months = window === '1M' ? 1 : window === '3M' ? 3 : 6;
+  const months = window === '3M' ? 3 : window === '6M' ? 6 : 12;
   return subMonths(now, months);
 }
 
@@ -35,28 +32,15 @@ export interface DateBucket {
 export function generateBuckets(window: TimeWindow): DateBucket[] {
   const now = new Date();
   const buckets: DateBucket[] = [];
-
-  if (window === '1M') {
-    // Weekly buckets for 1-month window
-    let cursor = startOfWeek(subMonths(now, 1), { weekStartsOn: 1 });
-    while (isBefore(cursor, now)) {
-      const start = cursor;
-      const end = endOfWeek(cursor, { weekStartsOn: 1 });
-      buckets.push({ label: format(start, 'MMM d'), start, end });
-      cursor = addWeeks(cursor, 1);
-    }
-  } else {
-    // Monthly buckets for 3M/6M
-    const months = window === '3M' ? 3 : 6;
-    let cursor = startOfMonth(subMonths(now, months));
-    while (isBefore(cursor, now)) {
-      const start = cursor;
-      const end = endOfMonth(cursor);
-      buckets.push({ label: format(start, 'MMM yy'), start, end });
-      cursor = addMonths(cursor, 1);
-    }
+  // All windows use monthly buckets
+  const months = window === '3M' ? 3 : window === '6M' ? 6 : 12;
+  let cursor = startOfMonth(subMonths(now, months));
+  while (isBefore(cursor, now)) {
+    const start = cursor;
+    const end = endOfMonth(cursor);
+    buckets.push({ label: format(start, 'MMM yy'), start, end });
+    cursor = addMonths(cursor, 1);
   }
-
   return buckets;
 }
 
