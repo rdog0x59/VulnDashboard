@@ -1,5 +1,5 @@
 // Bump version to invalidate any caches written without date revival
-const PREFIX = 'vulndash:v2:';
+const PREFIX = 'vulndash:v3:';
 
 interface CacheEntry<T> {
   data: T;
